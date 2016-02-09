@@ -1,3 +1,5 @@
+package SST;
+
 /**
  * Created by Gvozd on 03.02.2016.
  */

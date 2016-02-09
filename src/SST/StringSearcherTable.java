@@ -1,15 +1,20 @@
-import java.io.*;
+package SST;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 
 /**
  * Created by Gvozd on 03.02.2016.
  */
-public class StringSearcherTable {
-    private static StringSearcherTable instance;
-    private HashMap<String, Integer> dataset;
+public class StringSearcherTable implements Runnable {
+    private int thisId;
+    private ArrayList<String> textdata;
+    private WordSearcher parent;
     private int wordRepeatLimit = 2;
     private boolean ignorePunctuationMarks = false;
     private boolean useCaseInsensitiveMethod = false;
@@ -35,14 +40,9 @@ public class StringSearcherTable {
         this.wordRepeatLimit = wordRepeatLimit;
     }
 
-    private StringSearcherTable() {
-    }
-
-    public static StringSearcherTable getInstance() {
-        if (instance == null) {
-            instance = new StringSearcherTable();
-        }
-        return instance;
+    public StringSearcherTable(WordSearcher parent, int thisId) {
+        this.parent = parent;
+        this.thisId = thisId;
     }
 
     public void getRepeatableStringTable(File targetFile) {
@@ -54,22 +54,19 @@ public class StringSearcherTable {
             while (scanner.hasNext()) {
                 stringData.add(scanner.nextLine());
             }
-            getRepeatableStringTable(stringData);
+            textdata = stringData;
         } catch (NotAFileException e) {
             e.printStackTrace();
-        } catch (NotAStringObjectException e2) {
-            e2.printStackTrace();
         } catch (IOException e1) {
             e1.printStackTrace();
         }
     }
 
-    public void getRepeatableStringTable(List stringArray) throws NotAStringObjectException {
+    private void getRepeatableStringTable(List stringArray) throws NotAStringObjectException {
         String tempLine;
         lineCount = 0;
         wordCount = 0;
         textName = null;
-        dataset = new HashMap<>();
         try {
             for (Object stringObject : stringArray) {
                 tempLine = (String) stringObject;
@@ -92,14 +89,17 @@ public class StringSearcherTable {
         } catch (ClassCastException e) {
             throw new NotAStringObjectException();
         }
-        writeStringTable(dataset);
+        System.out.println("Текст \"" + textName + "\" содержит " + lineCount + " строк и " + wordCount + " слов");
+        System.out.println("Нижний порог количества повторений: " + wordRepeatLimit);
+        System.out.println();
+        parent.searchEnded(thisId);
     }
 
     private void addWordIntoSet(String wordForAdding) {
-        if (dataset.containsKey(wordForAdding)) {
+        if (parent.dataset.containsKey(wordForAdding)) {
             updateWordCounterInASet(wordForAdding);
         } else {
-            dataset.put(wordForAdding, 1);
+            parent.dataset.put(wordForAdding, 1);
         }
     }
 
@@ -119,16 +119,15 @@ public class StringSearcherTable {
     }
 
     private void updateWordCounterInASet(String insertableWord) {
-        dataset.replace(insertableWord, dataset.get(insertableWord), (dataset.get(insertableWord) + 1));
+        parent.dataset.replace(insertableWord, parent.dataset.get(insertableWord), (parent.dataset.get(insertableWord) + 1));
     }
 
-    private void writeStringTable(HashMap<String, Integer> dataset) {
-        System.out.println("Текст \"" + textName + "\" содержит " + lineCount + " строк и " + wordCount + " слов");
-        System.out.println("Нижний порог количества повторений: " + wordRepeatLimit);
-        for (HashMap.Entry<String, Integer> entry : dataset.entrySet()) {
-            if (entry.getValue() >= wordRepeatLimit) {
-                System.out.println("Слово \"" + entry.getKey() + "\" повторяется " + entry.getValue() + " раз.");
-            }
+    @Override
+    public void run() {
+        if (textdata != null) try {
+            getRepeatableStringTable(textdata);
+        } catch (NotAStringObjectException e) {
+            e.printStackTrace();
         }
     }
 }
